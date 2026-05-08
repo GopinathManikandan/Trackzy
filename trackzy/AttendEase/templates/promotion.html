@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Manual Promotion - Attendance System{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-graduation-cap me-2"></i>Manual Student Promotion
+                    </h4>
+                    <a href="{{ url_for('hod_dashboard') }}" class="btn btn-sm btn-outline-light">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Instruction:</strong> Use this page to move students from one class to another. 
+                        This is useful for year-end promotions or merging sections.
+                    </div>
+
+                    <form action="{{ url_for('promote_students') }}" method="POST" id="promotionForm">
+                        <div class="row g-4">
+                            <!-- From Class -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Promote From (Source)</label>
+                                <select name="from_class" id="from_class" class="form-select form-select-lg" required>
+                                    <option value="" selected disabled>Select Class</option>
+                                    {% for class_item in classes %}
+                                    <option value="{{ class_item.class_id }}">{{ class_item.class_name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text mt-2" id="sourceCount">
+                                    Select a class to see student count.
+                                </div>
+                            </div>
+
+                            <!-- To Class -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Promote To (Destination)</label>
+                                <select name="to_class" id="to_class" class="form-select form-select-lg" required>
+                                    <option value="" selected disabled>Select Destination</option>
+                                    <optgroup label="Active Classes">
+                                        {% for class_item in classes %}
+                                        <option value="{{ class_item.class_id }}">{{ class_item.class_name }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                    <optgroup label="Special Actions">
+                                        <option value="GRADUATED">🎓 Graduated (Remove from active list)</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+
+                            <!-- Confirmation Box -->
+                            <div class="col-12 mt-4" id="confirmationBox" style="display: none;">
+                                <div class="card bg-light border-warning">
+                                    <div class="card-body">
+                                        <h6 class="text-warning mb-2"><i class="fas fa-exclamation-triangle me-2"></i>Confirmation</h6>
+                                        <p class="mb-0" id="confirmationText">
+                                            Are you sure you want to promote these students?
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg w-100" id="submitBtn">
+                                    <i class="fas fa-check-circle me-2"></i>Execute Promotion
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Helpful Tips -->
+            <div class="mt-4">
+                <h5><i class="fas fa-lightbulb text-warning me-2"></i>Tips for Success</h5>
+                <ul class="text-muted">
+                    <li>Promoting students will update their class assignment immediately.</li>
+                    <li>If you are moving <strong>Final Year</strong> students, select <strong>Graduated</strong> as the destination.</li>
+                    <li>To merge sections, promote each section individually to the same destination class.</li>
+                    <li>Ensure you have backed up your attendance data if needed before bulk changes.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fromSelect = document.getElementById('from_class');
+    const toSelect = document.getElementById('to_class');
+    const confirmationBox = document.getElementById('confirmationBox');
+    const confirmationText = document.getElementById('confirmationText');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    function updateConfirmation() {
+        const fromVal = fromSelect.value;
+        const toVal = toSelect.value;
+        const fromText = fromSelect.options[fromSelect.selectedIndex].text;
+        const toText = toSelect.options[toSelect.selectedIndex].text;
+
+        if (fromVal && toVal) {
+            confirmationBox.style.display = 'block';
+            if (toVal === 'GRADUATED') {
+                confirmationText.innerHTML = `All students from <strong>${fromText}</strong> will be marked as <strong>Graduated</strong> and moved to the archives. This cannot be undone.`;
+                submitBtn.className = 'btn btn-danger btn-lg w-100';
+            } else {
+                confirmationText.innerHTML = `All students in <strong>${fromText}</strong> will be moved to <strong>${toText}</strong>.`;
+                submitBtn.className = 'btn btn-primary btn-lg w-100';
+            }
+            
+            if (fromVal === toVal) {
+                submitBtn.disabled = true;
+                confirmationText.innerHTML = `<span class="text-danger">Error: Source and Destination cannot be the same!</span>`;
+            } else {
+                submitBtn.disabled = false;
+            }
+        } else {
+            confirmationBox.style.display = 'none';
+        }
+    }
+
+    fromSelect.addEventListener('change', updateConfirmation);
+    toSelect.addEventListener('change', updateConfirmation);
+
+    document.getElementById('promotionForm').addEventListener('submit', function(e) {
+        if (!confirm('Final Confirmation: Are you sure you want to proceed with this bulk update?')) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

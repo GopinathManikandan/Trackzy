@@ -1,0 +1,547 @@
+{% extends "base.html" %}
+
+{% block title %}{{ class_obj.class_name }} - Class Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('hod_dashboard') }}">Dashboard</a>
+                    </li>
+                    <li class="breadcrumb-item active">{{ class_obj.class_name }}</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-chalkboard text-primary me-2"></i>
+                        {{ class_obj.class_name }}
+                    </h2>
+                    <p class="text-muted mb-0">
+                        {{ class_obj.department }} • Semester {{ class_obj.semester }} • Section {{ class_obj.section }}
+                    </p>
+                </div>
+                <div class="text-end d-flex gap-2">
+                    <select class="form-select" id="basisSelector" style="width: auto;">
+                        <option value="day" {{ 'selected' if attendance_type == 'day' }}>Overall Day</option>
+                        <option value="period" {{ 'selected' if attendance_type == 'period' }}>Specific Period</option>
+                    </select>
+                    <select class="form-select {{ 'd-none' if attendance_type != 'period' }}" id="periodSelector" style="width: auto;">
+                        {% for p in range(1, 9) %}
+                        <option value="{{ p }}" {{ 'selected' if period == p }}>Period {{ p }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="date" class="form-control" id="dateSelector" value="{{ date_str }}" style="width: auto;">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card bg-primary">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ attendance_summary.total_students }}</h3>
+                    <p>Total Students</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card bg-success">
+                <div class="stat-icon">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ attendance_summary.present }}</h3>
+                    <p>Present Today</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card bg-danger">
+                <div class="stat-icon">
+                    <i class="fas fa-user-times"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ attendance_summary.absent }}</h3>
+                    <p>Absent Today</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card bg-warning">
+                <div class="stat-icon">
+                    <i class="fas fa-user-clock"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ attendance_summary.late }}</h3>
+                    <p>Latecomers</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Attendance Chart -->
+    <div class="row mb-4">
+        <div class="col-lg-8 mb-4 mb-lg-0">
+            <div class="chart-card h-100">
+                <div class="card-header py-3">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center">
+                        <h5 class="mb-3 mb-sm-0 fw-bold">
+                            <i class="fas fa-chart-line text-primary me-2"></i>
+                            Weekly Attendance Trend
+                        </h5>
+                        <div class="chart-controls">
+                            <div class="btn-group btn-group-sm w-100" role="group">
+                                <button type="button" class="btn btn-outline-primary active" data-period="7">7 Days</button>
+                                <button type="button" class="btn btn-outline-primary" data-period="30">30 Days</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div style="position: relative; height: 300px; width: 100%;">
+                        <canvas id="attendanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="chart-card h-100">
+                <div class="card-header py-3">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="fas fa-chart-pie text-success me-2"></i>
+                        Today's Breakdown
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div style="position: relative; height: 300px; width: 100%;">
+                        <canvas id="breakdownChart"></canvas>
+                    </div>
+                    <div class="chart-legend mt-4">
+                        <div class="d-flex flex-wrap justify-content-center gap-3">
+                            <span class="legend-item">
+                                <span class="legend-color bg-success"></span>Present
+                            </span>
+                            <span class="legend-item">
+                                <span class="legend-color bg-danger"></span>Absent
+                            </span>
+                            <span class="legend-item">
+                                <span class="legend-color bg-warning"></span>Late
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Students Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="students-table-card">
+                <div class="card-header py-3">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center">
+                        <h5 class="mb-3 mb-lg-0 fw-bold">
+                            <i class="fas fa-list text-primary me-2"></i>
+                            Student Attendance ({{ date_str }} - {{ "Period " ~ period if attendance_type == 'period' else "Overall Day" }})
+                        </h5>
+                        <div class="table-controls d-flex flex-column flex-sm-row gap-2">
+                            <button type="button" class="btn btn-success" id="bulkPromoteBtn" style="display: none;">
+                                <i class="fas fa-graduation-cap me-1"></i>Promote
+                            </button>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="studentFilter" 
+                                       placeholder="Search...">
+                                <button class="btn btn-outline-secondary dropdown-toggle" type="button" 
+                                        data-bs-toggle="dropdown">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item status-filter" href="#" data-status="all">All Students</a></li>
+                                    <li><a class="dropdown-item status-filter" href="#" data-status="present">Present Only</a></li>
+                                    <li><a class="dropdown-item status-filter" href="#" data-status="absent">Absent Only</a></li>
+                                    <li><a class="dropdown-item status-filter" href="#" data-status="late">Latecomers Only</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="studentsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>
+                                        <input type="checkbox" id="selectAll" class="form-check-input">
+                                    </th>
+                                    <th>Student</th>
+                                    <th>Roll Number</th>
+                                    <th>Status</th>
+                                    <th>Time</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student_id, attendance in student_attendance.items() %}
+                                <tr class="student-row" 
+                                    data-status="{{ attendance.status }}" 
+                                    data-late="{{ attendance.is_late|lower }}"
+                                    data-name="{{ attendance.student.name.lower() }}"
+                                    data-roll="{{ attendance.student.roll_number.lower() }}">
+                                    <td>
+                                        <input type="checkbox" class="form-check-input student-checkbox" 
+                                               value="{{ attendance.student.student_id }}" 
+                                               data-name="{{ attendance.student.name }}">
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="student-avatar me-3">
+                                                {{ attendance.student.name[:1]|upper if attendance.student.name else '' }}
+                                            </div>
+                                            <div>
+                                                <div class="fw-semibold">{{ attendance.student.name }}</div>
+                                                <small class="text-muted">{{ attendance.student.email or 'No email' }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ attendance.student.roll_number }}</span>
+                                    </td>
+                                    <td>
+                                        {% if attendance.status == 'present' %}
+                                            {% if attendance.is_late %}
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-clock me-1"></i>Present (Late)
+                                            </span>
+                                            {% else %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check me-1"></i>Present
+                                            </span>
+                                            {% endif %}
+                                        {% else %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-times me-1"></i>Absent
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {% if attendance.status == 'present' %}
+                                                {{ attendance.is_late and 'Late arrival' or 'On time' }}
+                                            {% else %}
+                                                Not marked
+                                            {% endif %}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('student_details', student_id=attendance.student.student_id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-user me-1"></i>Details
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+// Class Details functionality
+class ClassDetails {
+    constructor() {
+        this.weeklyTrend = {{ weekly_trend|tojson }};
+        this.attendance_summary = {{ attendance_summary|tojson }};
+        this.summary = this.attendance_summary; // For backward compatibility
+        this.init();
+    }
+    
+    init() {
+        this.initCharts();
+        this.bindEvents();
+    }
+    
+    initCharts() {
+        this.initTrendChart();
+        this.initBreakdownChart();
+    }
+    
+    initTrendChart() {
+        const ctx = document.getElementById('attendanceChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: this.weeklyTrend.map(item => {
+                    const date = new Date(item.date);
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }),
+                datasets: [{
+                    label: 'Attendance %',
+                    data: this.weeklyTrend.map(item => item.percentage),
+                    borderColor: 'rgb(13, 110, 253)',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Attendance: ' + context.parsed.y.toFixed(1) + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    initBreakdownChart() {
+        const ctx = document.getElementById('breakdownChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Present', 'Absent', 'Late'],
+                datasets: [{
+                    data: [
+                        this.summary.present - this.summary.late,
+                        this.summary.absent,
+                        this.summary.late
+                    ],
+                    backgroundColor: [
+                        '#198754',
+                        '#dc3545',
+                        '#ffc107'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label;
+                                const value = context.parsed;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    bindEvents() {
+        // Basis selector
+        const basisSelector = document.getElementById('basisSelector');
+        const periodSelector = document.getElementById('periodSelector');
+        const dateSelector = document.getElementById('dateSelector');
+
+        const reloadWithFilters = () => {
+            const date = dateSelector.value;
+            const basis = basisSelector.value;
+            const period = periodSelector.value;
+            let url = `{{ url_for('class_details', class_id=class_obj.class_id) }}?date=${date}&type=${basis}`;
+            if (basis === 'period') {
+                url += `&period=${period}`;
+            }
+            window.location.href = url;
+        };
+
+        basisSelector.addEventListener('change', () => {
+            if (basisSelector.value === 'period') {
+                periodSelector.classList.remove('d-none');
+            } else {
+                periodSelector.classList.add('d-none');
+                reloadWithFilters();
+            }
+        });
+
+        periodSelector.addEventListener('change', reloadWithFilters);
+        dateSelector.addEventListener('change', reloadWithFilters);
+        
+        // Student filter
+        document.getElementById('studentFilter').addEventListener('input', (e) => {
+            this.filterStudents(e.target.value);
+        });
+        
+        // Status filter
+        document.querySelectorAll('.status-filter').forEach(filter => {
+            filter.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.filterByStatus(e.target.getAttribute('data-status'));
+            });
+        });
+        
+        // Chart period toggle
+        document.querySelectorAll('[data-period]').forEach(button => {
+            button.addEventListener('click', (e) => {
+                document.querySelectorAll('[data-period]').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                // Implement period change logic here
+            });
+        });
+    }
+    
+    filterStudents(query) {
+        const rows = document.querySelectorAll('.student-row');
+        query = query.toLowerCase();
+        
+        rows.forEach(row => {
+            const name = row.getAttribute('data-name');
+            const roll = row.getAttribute('data-roll');
+            
+            if (name.includes(query) || roll.includes(query)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+    
+    filterByStatus(status) {
+        const rows = document.querySelectorAll('.student-row');
+        
+        rows.forEach(row => {
+            const rowStatus = row.getAttribute('data-status');
+            const isLate = row.getAttribute('data-late') === 'true';
+            
+            let show = false;
+            switch(status) {
+                case 'all':
+                    show = true;
+                    break;
+                case 'present':
+                    show = rowStatus === 'present' && !isLate;
+                    break;
+                case 'absent':
+                    show = rowStatus === 'absent';
+                    break;
+                case 'late':
+                    show = rowStatus === 'present' && isLate;
+                    break;
+            }
+            
+            row.style.display = show ? '' : 'none';
+        });
+    }
+}
+
+// Bulk promotion functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const studentCheckboxes = document.querySelectorAll('.student-checkbox');
+    const bulkPromoteBtn = document.getElementById('bulkPromoteBtn');
+    
+    // Handle select all checkbox
+    selectAllCheckbox.addEventListener('change', function() {
+        studentCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        updateBulkPromoteButton();
+    });
+    
+    // Handle individual checkboxes
+    studentCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+            selectAllCheckbox.checked = checkedBoxes.length === studentCheckboxes.length;
+            selectAllCheckbox.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < studentCheckboxes.length;
+            updateBulkPromoteButton();
+        });
+    });
+    
+    // Update bulk promote button visibility
+    function updateBulkPromoteButton() {
+        const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+        bulkPromoteBtn.style.display = checkedBoxes.length > 0 ? 'inline-block' : 'none';
+    }
+    
+    // Handle bulk promote button click
+    bulkPromoteBtn.addEventListener('click', function() {
+        const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+        if (checkedBoxes.length === 0) {
+            alert('Please select students to promote.');
+            return;
+        }
+        
+        const studentNames = Array.from(checkedBoxes).map(cb => cb.getAttribute('data-name'));
+        const confirmMessage = `Are you sure you want to promote the following ${checkedBoxes.length} student(s)?\n\n${studentNames.join('\n')}`;
+        
+        if (confirm(confirmMessage)) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ url_for("promote_students") }}';
+            
+            // Add class_id
+            const classIdInput = document.createElement('input');
+            classIdInput.type = 'hidden';
+            classIdInput.name = 'class_id';
+            classIdInput.value = '{{ class_obj.class_id }}';
+            form.appendChild(classIdInput);
+            
+            // Add selected student IDs
+            checkedBoxes.forEach(checkbox => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'student_ids[]';
+                input.value = checkbox.value;
+                form.appendChild(input);
+            });
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+});
+
+// Initialize class details
+document.addEventListener('DOMContentLoaded', function() {
+    new ClassDetails();
+});
+</script>
+{% endblock %}

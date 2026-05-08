@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+
+{% block title %}Staff Dashboard - Attendance System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h2 class="dashboard-title mb-1">
+                        Staff Portal
+                    </h2>
+                    <p class="dashboard-subtitle mb-0">AI&DS Department • Welcome back, {{ user.name }}</p>
+                </div>
+                <div class="text-md-end text-start">
+                    <p class="mb-0 text-muted small fw-bold text-uppercase">Operational Date</p>
+                    <h5 class="mb-0 fw-bold text-primary" id="currentDate">{{ today }}</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card bg-primary">
+                <div class="stat-icon">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ class_summaries|length }}</h3>
+                    <p>Assigned Classes</p>
+                    <div class="stat-trend">
+                        <small class="text-white-50">Active workload</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card bg-success">
+                <div class="stat-icon">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ class_summaries|selectattr('locked')|list|length }}</h3>
+                    <p>Completed Today</p>
+                    <div class="stat-trend">
+                        <small class="text-white-50">Attendance synchronized</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card bg-warning">
+                <div class="stat-icon">
+                    <i class="fas fa-user-clock"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ class_summaries|sum(attribute='late') }}</h3>
+                    <p>Latecomers</p>
+                    <div class="stat-trend">
+                        <small class="text-dark">Requiring review</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card bg-info">
+                <div class="stat-icon">
+                    <i class="fas fa-percentage"></i>
+                </div>
+                <div class="stat-content">
+                    {% set avg_percentage = (class_summaries|sum(attribute='percentage')/class_summaries|length) if class_summaries else 0 %}
+                    <h3>{{ "%.1f"|format(avg_percentage) }}%</h3>
+                    <p>Avg. Attendance</p>
+                    <div class="stat-trend">
+                        <small class="text-white-50">Overall performance</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Announcement Section -->
+    <div class="card border-0 shadow-sm mb-5 overflow-hidden">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0 fw-bold">
+                <i class="fas fa-bullhorn text-primary me-2"></i>
+                Post Announcement
+            </h5>
+        </div>
+        <div class="card-body p-4">
+            <form action="{{ url_for('post_announcement') }}" method="POST">
+                <div class="row g-4 align-items-end">
+                    <div class="col-lg-4">
+                        <label for="announceClass" class="form-label small fw-bold text-muted">Target Class</label>
+                        <select class="form-select" id="announceClass" name="class_id" required>
+                            <option value="">Choose a class...</option>
+                            <option value="all">All My Classes</option>
+                            {% for class_obj in all_classes %}
+                            <option value="{{ class_obj.class_id }}">{{ class_obj.class_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-lg-6">
+                        <label for="announceContent" class="form-label small fw-bold text-muted">Announcement Content</label>
+                        <textarea class="form-control" id="announceContent" name="content" rows="1" placeholder="Type your announcement here..." required></textarea>
+                    </div>
+                    <div class="col-lg-2">
+                        <button type="submit" class="btn btn-primary w-100 shadow-sm">
+                            Post <i class="fas fa-paper-plane ms-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Mark Attendance Section -->
+    <div class="card border-0 shadow-sm mb-5 overflow-hidden">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0 fw-bold">
+                <i class="fas fa-clipboard-check text-primary me-2"></i>
+                Take Attendance
+            </h5>
+        </div>
+        <div class="card-body p-4">
+            <form id="markAttendanceForm">
+                <div class="row g-4 align-items-end">
+                    <div class="col-lg-5">
+                        <label for="classSelect" class="form-label small fw-bold text-muted">Select Target Class</label>
+                        <select class="form-select" id="classSelect" name="class_id">
+                            <option value="">Choose a class...</option>
+                            {% for class_obj in all_classes %}
+                            <option value="{{ class_obj.class_id }}">{{ class_obj.class_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-lg-3">
+                        <label for="attendanceType" class="form-label small fw-bold text-muted">Attendance Basis</label>
+                        <select class="form-select" id="attendanceType" name="type">
+                            <option value="day">Full Day (Period 1)</option>
+                            <option value="period">Specific Period</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 {% if request.args.get('type') != 'period' %}hide-container{% endif %}" id="periodSelectContainer">
+                        <label for="periodNumber" class="form-label small fw-bold text-muted">Period</label>
+                        <select class="form-select" id="periodNumber" name="period">
+                            {% for p in range(1, 9) %}
+                            <option value="{{ p }}">Period {{ p }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-lg-2">
+                        <button type="submit" class="btn btn-primary w-100 shadow-sm">
+                            Proceed <i class="fas fa-arrow-right ms-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Announcement History Section -->
+    <div class="card border-0 shadow-sm mb-5 overflow-hidden">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold">
+                <i class="fas fa-history text-primary me-2"></i>
+                My Announcement History
+            </h5>
+            <button class="btn btn-sm btn-outline-secondary rounded-pill" type="button" data-bs-toggle="collapse" data-bs-target="#historyCollapse">
+                Toggle History
+            </button>
+        </div>
+        <div class="collapse show" id="historyCollapse">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="px-4 py-3 border-0 small fw-bold text-muted">DATE & TIME (IST)</th>
+                                <th class="px-4 py-3 border-0 small fw-bold text-muted">TARGET CLASS</th>
+                                <th class="px-4 py-3 border-0 small fw-bold text-muted">CONTENT</th>
+                                <th class="px-4 py-3 border-0 small fw-bold text-muted text-end">ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if staff_announcements %}
+                                {% for announce in staff_announcements %}
+                                <tr>
+                                    <td class="px-4 py-3">
+                                        <span class="fw-bold text-dark">{{ announce.created_at.strftime('%d %b, %Y') }}</span>
+                                        <div class="small text-muted">{{ announce.created_at.strftime('%H:%M %p') }}</div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="badge {{ 'bg-info' if announce.class_id == 'all' else 'bg-primary-soft text-primary' }} px-3 py-2 rounded-pill">
+                                            {{ 'All Classes' if announce.class_id == 'all' else announce.class_id }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <p class="mb-0 text-dark small" style="max-width: 400px; white-space: normal;">{{ announce.content }}</p>
+                                    </td>
+                                    <td class="px-4 py-3 text-end">
+                                        <form action="{{ url_for('delete_announcement_route', announcement_id=announce.id) }}" method="POST" onsubmit="return confirm('Delete this announcement?')">
+                                            <button type="submit" class="btn btn-link text-danger p-0">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-muted">
+                                        <i class="fas fa-bullhorn d-block mb-2 opacity-25" style="font-size: 2rem;"></i>
+                                        You haven't posted any announcements yet.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-4">
+                <h4 class="mb-0 fw-bold text-dark">
+                    <i class="fas fa-layer-group text-primary me-2"></i>
+                    My Academic Workload
+                </h4>
+                <div class="d-flex flex-wrap gap-2 p-1 bg-light rounded-pill border" role="group">
+                    <button type="button" class="btn btn-sm px-4 rounded-pill active" data-filter="all" id="filterAll">
+                        All
+                    </button>
+                    <button type="button" class="btn btn-sm px-4 rounded-pill" data-filter="completed" id="filterDone">
+                        Completed
+                    </button>
+                    <button type="button" class="btn btn-sm px-4 rounded-pill" data-filter="pending" id="filterPending">
+                        Pending
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row g-4" id="classesGrid">
+        {% for summary in class_summaries %}
+        <div class="col-lg-6 col-xl-4 class-card" data-status="{{ 'completed' if summary.locked else 'pending' }}">
+            <div class="card h-100 border-0 shadow-sm hover-lift class-dashboard-card {{ 'completed' if summary.locked else 'pending' }}">
+                <div class="card-header bg-white py-3 border-0">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="fw-bold mb-1 text-dark">{{ summary.class.class_name }}</h5>
+                            <p class="text-muted small mb-0">
+                                <i class="fas fa-users me-1"></i>
+                                {{ summary.total_students }} Registered Students
+                            </p>
+                        </div>
+                        <div class="class-status">
+                            {% if summary.locked %}
+                            <span class="badge bg-success-soft text-success px-3 py-2 rounded-pill">
+                                <i class="fas fa-check-circle me-1"></i>Finished
+                            </span>
+                            {% else %}
+                            <span class="badge bg-warning-soft text-warning px-3 py-2 rounded-pill">
+                                <i class="fas fa-clock me-1"></i>Incomplete
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body px-4 py-2">
+                    <div class="row g-0 rounded-3 overflow-hidden border mb-4">
+                        <div class="col-4 border-end">
+                            <div class="p-3 text-center bg-light">
+                                <div class="fs-5 fw-bold text-success">{{ summary.present }}</div>
+                                <div class="text-uppercase small fw-bold text-muted" style="font-size: 0.6rem;">Present</div>
+                            </div>
+                        </div>
+                        <div class="col-4 border-end">
+                            <div class="p-3 text-center bg-light">
+                                <div class="fs-5 fw-bold text-danger">{{ summary.absent }}</div>
+                                <div class="text-uppercase small fw-bold text-muted" style="font-size: 0.6rem;">Absent</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-3 text-center bg-light">
+                                <div class="fs-5 fw-bold text-warning">{{ summary.late }}</div>
+                                <div class="text-uppercase small fw-bold text-muted" style="font-size: 0.6rem;">Late</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold text-dark">{{ "%.1f"|format(summary.percentage) }}%</span>
+                        <span class="text-muted small">Attendance Performance</span>
+                    </div>
+                    <div class="progress mb-4" style="height: 6px; background-color: #eef2f7;">
+                        <div class="progress-bar {{ 'bg-success' if summary.percentage >= 90 else 'bg-warning' if summary.percentage >= 75 else 'bg-danger' }}" 
+                             role="progressbar" 
+                             style="width: {{ summary.percentage }}%; border-radius: 10px;">
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mb-3">
+                        {% if not summary.locked %}
+                        <a href="{{ url_for('mark_attendance', class_id=summary.class.class_id, date=today, type='day') }}" 
+                           class="btn btn-primary rounded-3 shadow-sm">
+                            <i class="fas fa-edit me-2"></i>Mark Attendance
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('latecomer_attendance', class_id=summary.class.class_id, date=today, type='day') }}" 
+                           class="btn btn-warning text-dark fw-bold rounded-3 shadow-sm">
+                            <i class="fas fa-user-clock me-2"></i>Update Latecomers
+                        </a>
+                        {% endif %}
+                        
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary w-100 rounded-3 border-light-subtle dropdown-toggle" type="button" 
+                                    data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-h me-2"></i>Academic Actions
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3">
+                                <li class="px-2">
+                                    <a class="dropdown-item rounded-2 py-2" 
+                                       href="{{ url_for('reports', class_id=summary.class.class_id, date=today) }}">
+                                        <i class="fas fa-chart-line me-3 text-primary"></i>View Analytics
+                                    </a>
+                                </li>
+                                <div class="dropdown-divider mx-2"></div>
+                                <li class="dropdown-header small text-muted text-uppercase fw-bold px-3 pt-2">Mark Periods</li>
+                                {% for period in range(1, 9) %}
+                                <li class="px-2">
+                                    <a class="dropdown-item rounded-2" 
+                                       href="{{ url_for('mark_attendance', class_id=summary.class.class_id, date=today, type='period', period=period) }}">
+                                        <i class="fas fa-clock me-3 small opacity-50"></i>Period {{ period }}
+                                    </a>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% if not class_summaries %}
+    <div class="row">
+        <div class="col-12">
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-chalkboard"></i>
+                </div>
+                <h4>No Classes Assigned</h4>
+                <p class="text-muted">You don't have any classes assigned yet. Please contact your administrator.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Update current date display
+function updateCurrentDate() {
+    const now = new Date();
+    const options = { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    };
+    document.getElementById('currentDate').textContent = now.toLocaleDateString('en-US', options);
+}
+
+// Filter classes
+document.querySelectorAll('[data-filter]').forEach(button => {
+    button.addEventListener('click', function() {
+        const filter = this.getAttribute('data-filter');
+        
+        // Update active button
+        document.querySelectorAll('[data-filter]').forEach(btn => btn.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Filter cards
+        document.querySelectorAll('.class-card').forEach(card => {
+            const status = card.getAttribute('data-status');
+            
+            if (filter === 'all' || filter === status) {
+                card.style.display = 'block';
+                setTimeout(() => card.classList.add('animate-in'), 10);
+            } else {
+                card.classList.remove('animate-in');
+                setTimeout(() => card.style.display = 'none', 300);
+            }
+        });
+    });
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    updateCurrentDate();
+    
+    // Add animation classes
+    document.querySelectorAll('.class-card').forEach((card, index) => {
+        setTimeout(() => card.classList.add('animate-in'), index * 100);
+    });
+});
+
+// Add hover effects
+document.querySelectorAll('.class-dashboard-card').forEach(card => {
+    card.addEventListener('mouseenter', function() {
+        this.classList.add('hover-lift');
+    });
+    
+    card.addEventListener('mouseleave', function() {
+        this.classList.remove('hover-lift');
+    });
+});
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const markAttendanceForm = document.getElementById('markAttendanceForm');
+        const classSelect = document.getElementById('classSelect');
+        const attendanceTypeSelect = document.getElementById('attendanceType');
+        const periodSelectContainer = document.getElementById('periodSelectContainer');
+        const periodNumberSelect = document.getElementById('periodNumber');
+
+        function togglePeriodSelect() {
+            if (attendanceTypeSelect.value === 'period') {
+                periodSelectContainer.classList.remove('hide-container');
+                periodSelectContainer.classList.add('fade-in-container');
+            } else {
+                periodSelectContainer.classList.add('hide-container');
+                periodSelectContainer.classList.remove('fade-in-container');
+            }
+        }
+
+        attendanceTypeSelect.addEventListener('change', togglePeriodSelect);
+        togglePeriodSelect(); // Call on load to set initial state
+
+        markAttendanceForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const classId = classSelect.value;
+            
+            if (!classId) {
+                alert('Please select a class before proceeding.');
+                return; // Stop the form submission
+            }
+
+            const type = attendanceTypeSelect.value;
+            // Construct the base URL dynamically in JavaScript
+            let url = `/mark-attendance/${classId}?date={{ today }}&type=${type}`; 
+
+            if (type === 'period') {
+                const period = periodNumberSelect.value;
+                url += `&period=${period}`;
+            }
+            window.location.href = url;
+        });
+    });
+</script>
+{% endblock %}

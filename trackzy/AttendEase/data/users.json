@@ -1,0 +1,74 @@
+[
+  {
+    "user_id": "admin1",
+    "username": "admin",
+    "password": "admin123",
+    "role": "admin",
+    "name": "System Administrator",
+    "assigned_classes": []
+  },
+  {
+    "user_id": "Reka",
+    "username": "Reka",
+    "password": "Reka123",
+    "role": "hod",
+    "name": "Reka",
+    "assigned_classes": []
+  },
+  {
+    "user_id": "Sowmiya",
+    "username": "Sowmiya",
+    "password": "Sowmiya123",
+    "role": "staff",
+    "name": "Prof. Sowmiya",
+    "assigned_classes": ["1st Year A","1st Year B","2nd Year A", "2nd Year B", "3rd Year", "Final Year"]
+  },
+  {
+    "user_id": "Indhumathi",
+    "username": "Indhumathi",
+    "password": "indhumathi123",
+    "role": "staff",
+    "name": "Prof. Indhumathi",
+    "assigned_classes": ["1st Year A","1st Year B","2nd Year A", "2nd Year B", "3rd Year", "Final Year"]
+  },
+  {
+    "user_id": "Balachandar",
+    "username": "Balachandar",
+    "password": "Balachandar123",
+    "role": "staff",
+    "name": "Prof. Balachandar",
+    "assigned_classes": ["1st Year A","1st Year B","2nd Year A", "2nd Year B", "3rd Year", "Final Year"]
+  },
+  {
+    "user_id": "Brindha Monica Selas",
+    "username": "Brindha Monica Selas",
+    "password": "Bms123",
+    "role": "staff",
+    "name": "Prof. Brindha Monica Selas",
+    "assigned_classes": ["1st Year A","1st Year B","2nd Year A", "2nd Year B", "3rd Year", "Final Year"]
+  },
+  {
+    "user_id": "Thenmozhi",
+    "username": "Thenmozhi",
+    "password": "Thenmozhi123",
+    "role": "staff",
+    "name": "Prof. Thenmozhi",
+    "assigned_classes": ["1st Year A","1st Year B","2nd Year A", "2nd Year B", "3rd Year", "Final Year"]
+  },
+  {
+    "user_id": "Thangaponnu",
+    "username": "Thangaponnu",
+    "password": "Thangaponnu123",
+    "role": "staff",
+    "name": "Prof. Thangaponnu",
+    "assigned_classes": ["1st Year A","1st Year B","2nd Year A", "2nd Year B", "3rd Year", "Final Year"]
+  },
+  {
+    "user_id": "Kalaivani",
+    "username": "Kalaivani",
+    "password": "Kalaivani123",
+    "role": "staff",
+    "name": "Prof. Kalaivani",
+    "assigned_classes": ["1st Year A","1st Year B","2nd Year A", "2nd Year B", "3rd Year", "Final Year"]
+  }
+]

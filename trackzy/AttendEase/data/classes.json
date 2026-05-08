@@ -1,0 +1,58 @@
+[
+    {
+    "class_id": "1st Year A",
+    "class_name": "1st Year A",
+    "department": "General",
+    "semester": 1,
+    "section": "A",
+    "students": []
+  },
+  {
+    "class_id": "1st Year B",
+    "class_name": "1st Year B",
+    "department": "General",
+    "semester": 1,
+    "section": "B",
+    "students": []
+  },
+  {
+    "class_id": "2nd Year A",
+    "class_name": "2nd Year A",
+    "department": "General",
+    "semester": 2,
+    "section": "A",
+    "students": []
+  },
+  {
+    "class_id": "2nd Year B",
+    "class_name": "2nd Year B",
+    "department": "General",
+    "semester": 2,
+    "section": "B",
+    "students": []
+  },
+  {
+    "class_id": "3rd Year A",
+    "class_name": "3rd Year A",
+    "department": "General",
+    "semester": 3,
+    "section": "A",
+    "students": []
+  },
+  {
+    "class_id": "3rd Year B",
+    "class_name": "3rd Year B",
+    "department": "General",
+    "semester": 3,
+    "section": "B",
+    "students": []
+  },
+  {
+    "class_id": "Final Year",
+    "class_name": "Final Year",
+    "department": "General",
+    "semester": 4,
+    "section": "",
+    "students": []
+  }
+]

@@ -1,0 +1,646 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Attendance System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h2 class="dashboard-title mb-1">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Reports & Analytics
+                    </h2>
+                    <p class="dashboard-subtitle mb-0">Departmental Insights • Generate comprehensive attendance reports</p>
+                </div>
+                <div class="text-md-end text-start">
+                    <button type="button" class="btn btn-success shadow-sm" id="downloadImage">
+                        <i class="fas fa-camera me-1"></i>Download Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Report Filters -->
+    <div class="card shadow-sm mb-4 border-0">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0 fw-bold">
+                <i class="fas fa-filter text-primary me-2"></i>Report Filters
+            </h5>
+        </div>
+        <div class="card-body">
+            <form id="reportFilters">
+                <div class="row g-3">
+                    <div class="col-md-2">
+                        <label for="reportDate" class="form-label small fw-bold text-muted">Date</label>
+                        <input type="date" class="form-control" id="reportDate" value="{{ date_str }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="attendanceBasis" class="form-label small fw-bold text-muted">Attendance Basis</label>
+                        <select class="form-select" id="attendanceBasis">
+                            <option value="day" {{ 'selected' if report_data.attendance_type == 'day' }}>Overall Day</option>
+                            <option value="period" {{ 'selected' if report_data.attendance_type == 'period' }}>Specific Period</option>
+                        </select>
+                    </div>
+                    <div id="periodFilterCol" class="col-md-2 {{ 'hide-container' if report_data.attendance_type != 'period' else '' }}">
+                        <label for="periodFilter" class="form-label small fw-bold text-muted">Period</label>
+                        <select class="form-select" id="periodFilter">
+                            {% for p in range(1, 9) %}
+                            <option value="{{ p }}" {{ 'selected' if report_data.period == p }}>Period {{ p }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>                    <div class="col-md-3">
+                        <label for="classFilter" class="form-label small fw-bold text-muted">Class (Optional)</label>
+                        <select class="form-select" id="classFilter">
+                            <option value="">All Classes</option>
+                            {% for class_obj in classes %}
+                            <option value="{{ class_obj.class_id }}" {{ 'selected' if selected_class_id == class_obj.class_id }}>{{ class_obj.class_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="statusFilter" class="form-label small fw-bold text-muted">Status</label>
+                        <select class="form-select" id="statusFilter">
+                            <option value="all" {{ 'selected' if report_data.status_filter == 'all' }}>All Students</option>
+                            <option value="present" {{ 'selected' if report_data.status_filter == 'present' }}>Only Present</option>
+                            <option value="absent" {{ 'selected' if report_data.status_filter == 'absent' }}>Only Absent</option>
+                            <option value="late" {{ 'selected' if report_data.status_filter == 'late' }}>Only Latecomers</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <button type="button" class="btn btn-outline-secondary px-4" id="resetFilters">
+                        <i class="fas fa-undo me-1"></i>Reset
+                    </button>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="fas fa-sync-alt me-1"></i>Generate Report
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Report Dashboard -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card bg-primary">
+                <div class="stat-icon">
+                    <i class="fas fa-chalkboard"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ report_data.classes|length }}</h3>
+                    <p>Total Classes</p>
+                    <div class="stat-trend">
+                        <small class="text-white-50">Departmental scope</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card bg-success">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ report_data.total_students }}</h3>
+                    <p>Total Students</p>
+                    <div class="stat-trend">
+                        <small class="text-white-50">Analyzed</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card bg-info">
+                <div class="stat-icon">
+                    <i class="fas fa-percentage"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ "%.1f"|format(report_data.overall_percentage) }}%</h3>
+                    <p>Overall Attendance</p>
+                    <div class="stat-trend">
+                        <small class="text-white-50">Department average</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card bg-warning">
+                <div class="stat-icon">
+                    <i class="fas fa-user-clock"></i>
+                </div>
+                <div class="stat-content">
+                    {% set total_late = report_data.classes|sum(attribute='late') %}
+                    <h3>{{ total_late }}</h3>
+                    <p>Latecomers</p>
+                    <div class="stat-trend">
+                        <small class="text-dark">Requiring attention</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Section -->
+    <div class="row mb-4 g-4">
+        <div class="col-xl-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-chart-column text-primary me-2"></i>
+                            Class-wise Attendance Comparison
+                        </h5>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="downloadChart">
+                            <i class="fas fa-download me-1"></i>Chart
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <div style="height: 400px; position: relative;">
+                        <canvas id="classComparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="fas fa-chart-pie text-success me-2"></i>
+                        Attendance Distribution
+                    </h5>
+                </div>
+                <div class="card-body p-4 d-flex flex-column justify-content-center">
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="distributionChart"></canvas>
+                    </div>
+                    <div class="distribution-stats mt-4">
+                        <div class="row g-0 rounded-3 overflow-hidden border">
+                            <div class="col-6 border-end">
+                                <div class="p-3 text-center bg-light">
+                                    <div class="fs-4 fw-bold text-success">{{ report_data.total_present }}</div>
+                                    <div class="text-uppercase small fw-bold text-muted">Present</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-3 text-center bg-light">
+                                    <div class="fs-4 fw-bold text-danger">{{ report_data.total_students - report_data.total_present }}</div>
+                                    <div class="text-uppercase small fw-bold text-muted">Absent</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Detailed Report Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm overflow-hidden">
+                <div class="card-header bg-white py-3">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-table text-primary me-2"></i>
+                            Detailed Report - {{ date_str }}
+                        </h5>
+                        <button type="button" class="btn btn-success shadow-sm px-4" id="exportTable">
+                            <i class="fas fa-file-excel me-1"></i>Export CSV
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-senior-responsive mb-0 align-middle" id="reportTable">
+                            <thead class="bg-light">
+                                {% if report_data.students %}
+                                <tr>
+                                    <th class="px-4 py-3">Roll Number</th>
+                                    <th class="px-4 py-3">Student Name</th>
+                                    <th class="px-4 py-3">Class</th>
+                                    <th class="px-4 py-3 text-center">Status</th>
+                                    <th class="px-4 py-3">Marked By</th>
+                                    <th class="px-4 py-3 text-center">Actions</th>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <th class="px-4 py-3">Class</th>
+                                    <th class="px-4 py-3 text-center">Total Students</th>
+                                    <th class="px-4 py-3 text-center">Present</th>
+                                    <th class="px-4 py-3 text-center">Absent</th>
+                                    <th class="px-4 py-3 text-center">Late</th>
+                                    <th class="px-4 py-3">Attendance %</th>
+                                    <th class="px-4 py-3">Status</th>
+                                    <th class="px-4 py-3 text-center">Actions</th>
+                                </tr>
+                                {% endif %}
+                            </thead>
+                            <tbody>
+                                {% if report_data.students %}
+                                    {% for student in report_data.students %}
+                                    <tr>
+                                        <td data-label="Roll Number" class="px-4 py-3 fw-bold text-primary">{{ student.roll_number }}</td>
+                                        <td data-label="Student Name" class="px-4 py-3">{{ student.name }}</td>
+                                        <td data-label="Class" class="px-4 py-3"><span class="badge bg-light text-dark border">{{ student.class_name }}</span></td>
+                                        <td data-label="Status" class="px-4 py-3 text-center">
+                                            {% if student.status == 'present' %}
+                                                {% if student.is_late %}
+                                                <span class="badge bg-warning-soft text-warning">Latecomer</span>
+                                                {% else %}
+                                                <span class="badge bg-success-soft text-success">Present</span>
+                                                {% endif %}
+                                            {% else %}
+                                            <span class="badge bg-danger-soft text-danger">Absent</span>
+                                            {% endif %}
+                                        </td>
+                                        <td data-label="Marked By" class="px-4 py-3 text-muted small">{{ student.marked_by }}</td>
+                                        <td data-label="Actions" class="px-4 py-3 text-center">
+                                            <a href="{{ url_for('student_details', student_id=student.student_id) }}" 
+                                               class="btn btn-sm btn-outline-primary rounded-pill">
+                                                <i class="fas fa-user me-1"></i>Profile
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if not report_data.students %}
+                                    <tr>
+                                        <td colspan="6" class="text-center py-5 text-muted">
+                                            <i class="fas fa-search fa-3x mb-3 opacity-25"></i>
+                                            <p>No students found matching the selected filters.</p>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                {% else %}
+                                    {% for class_data in report_data.classes %}
+                                    <tr>
+                                        <td data-label="Class" class="px-4 py-3">
+                                            <div class="class-info">
+                                                <div class="fw-bold text-dark">{{ class_data.class_name }}</div>
+                                                <small class="text-muted">{{ class_data.class_id }}</small>
+                                            </div>
+                                        </td>
+                                        <td data-label="Total Students" class="px-4 py-3 text-center">
+                                            <span class="badge bg-light text-dark px-3 py-2 rounded-pill border">{{ class_data.total_students }}</span>
+                                        </td>
+                                        <td data-label="Present" class="px-4 py-3 text-center">
+                                            <span class="badge bg-success-soft text-success px-3 py-2 rounded-pill">{{ class_data.present }}</span>
+                                        </td>
+                                        <td data-label="Absent" class="px-4 py-3 text-center">
+                                            <span class="badge bg-danger-soft text-danger px-3 py-2 rounded-pill">{{ class_data.absent }}</span>
+                                        </td>
+                                        <td data-label="Late" class="px-4 py-3 text-center">
+                                            <span class="badge bg-warning-soft text-warning px-3 py-2 rounded-pill">{{ class_data.late }}</span>
+                                        </td>
+                                        <td data-label="Attendance %" class="px-4 py-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="progress-container flex-grow-1 me-3">
+                                                    <div class="progress" style="height: 6px; background-color: #eef2f7;">
+                                                        <div class="progress-bar {{ 'bg-success' if class_data.percentage >= 90 else 'bg-warning' if class_data.percentage >= 75 else 'bg-danger' }}" 
+                                                             role="progressbar" 
+                                                             style="width: {{ class_data.percentage }}%; border-radius: 10px;">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span class="fw-bold text-primary small">{{ "%.1f"|format(class_data.percentage) }}%</span>
+                                            </div>
+                                        </td>
+                                        <td data-label="Status" class="px-4 py-3">
+                                            {% if class_data.percentage >= 90 %}
+                                            <span class="badge bg-success-soft text-success">Excellent</span>
+                                            {% elif class_data.percentage >= 75 %}
+                                            <span class="badge bg-warning-soft text-warning">Good</span>
+                                            {% else %}
+                                            <span class="badge bg-danger-soft text-danger">Poor</span>
+                                            {% endif %}
+                                        </td>
+                                        <td data-label="Actions" class="px-4 py-3 text-center">
+                                            <div class="d-flex gap-1 justify-content-center">
+                                                <a href="{{ url_for('class_details', class_id=class_data.class_id, date=date_str) }}" 
+                                                   class="btn btn-sm btn-info text-white" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-sm btn-success export-class" 
+                                                        data-class-id="{{ class_data.class_id }}" title="Export Data">
+                                                    <i class="fas fa-download"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+// Reports functionality
+class ReportsManager {
+    constructor() {
+        this.reportData = {{ report_data|tojson }};
+        this.init();
+    }
+    
+    init() {
+        this.initCharts();
+        this.bindEvents();
+    }
+    
+    initCharts() {
+        this.initClassComparisonChart();
+        this.initDistributionChart();
+    }
+    
+    initClassComparisonChart() {
+        const ctx = document.getElementById('classComparisonChart').getContext('2d');
+        
+        const labels = this.reportData.classes.map(cls => cls.class_name);
+        const data = this.reportData.classes.map(cls => cls.percentage);
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Attendance %',
+                    data: data,
+                    backgroundColor: data.map(value => {
+                        if (value >= 90) return 'rgba(25, 135, 84, 0.8)';
+                        if (value >= 75) return 'rgba(255, 193, 7, 0.8)';
+                        return 'rgba(220, 53, 69, 0.8)';
+                    }),
+                    borderColor: data.map(value => {
+                        if (value >= 90) return 'rgb(25, 135, 84)';
+                        if (value >= 75) return 'rgb(255, 193, 7)';
+                        return 'rgb(220, 53, 69)';
+                    }),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Attendance: ' + context.parsed.y.toFixed(1) + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    initDistributionChart() {
+        const ctx = document.getElementById('distributionChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Present', 'Absent'],
+                datasets: [{
+                    data: [
+                        this.reportData.total_present,
+                        this.reportData.total_students - this.reportData.total_present
+                    ],
+                    backgroundColor: ['#198754', '#dc3545'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label;
+                                const value = context.parsed;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    bindEvents() {
+        // Toggle period filter based on attendance basis
+        const basisSelect = document.getElementById('attendanceBasis');
+        const periodCol = document.getElementById('periodFilterCol');
+        
+        basisSelect.addEventListener('change', () => {
+            if (basisSelect.value === 'period') {
+                periodCol.classList.remove('hide-container');
+                periodCol.classList.add('fade-in-container');
+            } else {
+                periodCol.classList.add('hide-container');
+                periodCol.classList.remove('fade-in-container');
+            }
+        });
+
+        document.getElementById('downloadImage').addEventListener('click', () => {
+            this.downloadReportAsImage();
+        });
+
+        document.getElementById('reportFilters').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.generateReport();
+        });
+
+        document.getElementById('resetFilters').addEventListener('click', () => {
+            this.resetFilters();
+        });
+
+        document.getElementById('exportTable').addEventListener('click', () => {
+            this.exportTable();
+        });
+
+        document.getElementById('downloadChart').addEventListener('click', () => {
+            this.downloadChart();
+        });
+
+        document.querySelectorAll('.export-class').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const classId = e.currentTarget.getAttribute('data-class-id');
+                this.exportClassData(classId);
+            });
+        });
+    }
+
+    downloadReportAsImage() {
+        // Simple download of the current page as image using html2canvas if available
+        if (typeof html2canvas !== 'undefined') {
+            html2canvas(document.body).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'daily_attendance_report.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        } else {
+            this.showToast('html2canvas library not loaded', 'danger');
+        }
+    }
+    
+    generateReport() {
+        const filters = {
+            date: document.getElementById('reportDate').value,
+            basis: document.getElementById('attendanceBasis').value,
+            period: document.getElementById('periodFilter').value,
+            class_id: document.getElementById('classFilter').value,
+            status: document.getElementById('statusFilter').value
+        };
+        
+        // Navigate to reports with filters
+        const params = new URLSearchParams();
+        if (filters.date) params.append('date', filters.date);
+        if (filters.basis) params.append('type', filters.basis);
+        if (filters.basis === 'period' && filters.period) params.append('period', filters.period);
+        if (filters.class_id) params.append('class_id', filters.class_id);
+        if (filters.status) params.append('status', filters.status);
+        
+        window.location.href = `{{ url_for('reports') }}?${params.toString()}`;
+    }
+    
+    resetFilters() {
+        window.location.href = `{{ url_for('reports') }}`;
+    }
+    
+    exportTable() {
+        const table = document.getElementById('reportTable');
+        if (!table) return;
+        
+        let csv = [];
+        const rows = table.querySelectorAll('tr');
+        
+        for (let i = 0; i < rows.length; i++) {
+            const row = [], cols = rows[i].querySelectorAll('td, th');
+            
+            for (let j = 0; j < cols.length; j++) {
+                // Skip Actions column (usually the last one)
+                if (j === cols.length - 1 && i === 0 && cols[j].textContent.includes('Actions')) continue;
+                if (j === cols.length - 1 && i > 0 && cols[j].querySelector('a, button')) continue;
+                
+                let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, " ").replace(/(\s\s+)/gm, ' ');
+                data = data.replace(/"/g, '""');
+                row.push('"' + data + '"');
+            }
+            csv.push(row.join(","));
+        }
+
+        this.downloadCSV(csv.join("\n"), `attendance_report_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    exportClassData(classId) {
+        // Find the specific class in our reportData
+        const classData = this.reportData.classes.find(c => c.class_id === classId);
+        if (!classData) {
+            this.showToast('Class data not found', 'danger');
+            return;
+        }
+
+        let csv = [
+            "Metric,Value",
+            `Class Name,"${classData.class_name}"`,
+            `Class ID,"${classData.class_id}"`,
+            `Total Students,${classData.total_students}`,
+            `Present,${classData.present}`,
+            `Absent,${classData.absent}`,
+            `Late,${classData.late}`,
+            `Attendance Percentage,${classData.percentage.toFixed(2)}%`,
+            `Report Date,"${document.getElementById('reportDate').value}"`
+        ];
+
+        this.downloadCSV(csv.join("\n"), `attendance_${classId}_${new Date().toISOString().split('T')[0]}.csv`);
+        this.showToast(`Exported data for ${classData.class_name}`, 'success');
+    }
+
+    downloadChart() {
+        const canvas = document.getElementById('classComparisonChart');
+        if (!canvas) return;
+        const link = document.createElement('a');
+        link.download = `attendance_chart_${new Date().toISOString().split('T')[0]}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    }
+
+    downloadCSV(csv, filename) {
+        const csvFile = new Blob([csv], {type: "text/csv"});
+        const downloadLink = document.createElement("a");
+        
+        downloadLink.download = filename;
+        downloadLink.href = window.URL.createObjectURL(csvFile);
+        downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink);
+        
+        downloadLink.click();
+        
+        setTimeout(() => {
+            document.body.removeChild(downloadLink);
+            window.URL.revokeObjectURL(downloadLink.href);
+        }, 100);
+    }
+    
+    showLoading() {
+        // Implementation for showing loading state
+        console.log('Loading...');
+    }
+    
+    showToast(message, type = 'info') {
+        // Create a toast notification
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type} toast-notification`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 100);
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => document.body.removeChild(toast), 300);
+        }, 3000);
+    }
+}
+
+// Initialize reports manager
+document.addEventListener('DOMContentLoaded', function() {
+    new ReportsManager();
+});
+</script>
+{% endblock %}

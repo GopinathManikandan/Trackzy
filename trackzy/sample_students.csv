@@ -1,0 +1,4 @@
+student_id,name,class_id,department,email,phone,parent_email,parent_phone
+S001,John Doe,2nd Year C,AI&DS,john@example.com,1234567890,parent@example.com,0987654321
+S002,Jane Smith,2nd Year C,AI&DS,jane@example.com,1234567891,parent2@example.com,0987654322
+S003,Bob Johnson,Final Year,AI&DS,bob@example.com,1234567892,parent3@example.com,0987654323

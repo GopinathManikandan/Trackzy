@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}My Dashboard - Trackzy{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Student Profile Header -->
+    <div class="row mb-4" style="position: relative; z-index: 1020;">
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-sm" style="border-left: 5px solid var(--primary-color) !important; background-color: #f0f7ff;">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h2 class="fw-bold mb-1 text-dark">{{ student.name }}</h2>
+                            <p class="mb-0 text-muted">
+                                <i class="fas fa-graduation-cap me-2 text-primary"></i>
+                                {{ student.department }} | {{ class_obj.class_name if class_obj else "Graduated" }}
+                            </p>
+                        </div>
+                        <div class="col-md-auto text-md-end mt-3 mt-md-0 d-flex align-items-center gap-3">
+                            <!-- Announcements Dropdown -->
+                            <div class="dropdown">
+                                <button class="btn btn-outline-warning rounded-pill px-4 position-relative" type="button" id="announcementDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-bullhorn me-2"></i>Announcements
+                                    <span id="announcementBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">
+                                        0
+                                    </span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-0 overflow-hidden" aria-labelledby="announcementDropdown" style="width: 320px; max-width: 95vw; border-radius: 1rem; z-index: 1030;">
+                                    <li class="bg-warning text-dark p-3 fw-bold d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-bullhorn me-2"></i>Class Announcements</span>
+                                        <span class="badge bg-dark-soft text-dark small" style="font-size: 0.65rem;">Recent</span>
+                                    </li>
+                                    <li class="p-0">
+                                        <div id="announcementList" style="max-height: 350px; overflow-y: auto; -webkit-overflow-scrolling: touch;">
+                                            <ul class="list-unstyled mb-0">
+                                                {% if announcements %}
+                                                    {% for announce in announcements %}
+                                                    <li class="p-3 border-bottom announcement-item" data-id="{{ announce.id }}" style="background-color: #fffdf5; white-space: normal;">
+                                                        <div class="d-flex justify-content-between align-items-start mb-1">
+                                                            <span class="fw-bold text-primary" style="font-size: 0.85rem;">{{ announce.staff_name }}</span>
+                                                            <span class="text-muted" style="font-size: 0.7rem; flex-shrink: 0; margin-left: 10px;">{{ announce.created_at.strftime('%d %b, %H:%M') }}</span>
+                                                        </div>
+                                                        <p class="mb-0 text-dark opacity-75" style="word-break: break-word; line-height: 1.4; font-size: 0.85rem;">{{ announce.content }}</p>
+                                                    </li>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <li class="p-4 text-center text-muted">
+                                                        <i class="fas fa-bell-slash d-block mb-2 opacity-25" style="font-size: 2rem;"></i>
+                                                        No announcements yet
+                                                    </li>
+                                                {% endif %}
+                                            </ul>
+                                        </div>
+                                    </li>
+                                    {% if announcements|length > 0 %}
+                                    <li class="bg-light p-2 text-center border-top">
+                                        <small class="text-muted" style="font-size: 0.65rem;">Scroll to see more</small>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+
+                            <button class="btn btn-outline-primary rounded-pill px-4" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse">
+                                <i class="fas fa-filter me-2"></i>Filter
+                            </button>
+                            <div class="bg-white rounded-3 px-4 py-3 d-inline-block border">
+                                <div class="small text-muted fw-bold text-uppercase" style="letter-spacing: 1px; font-size: 0.7rem;">Roll Number</div>
+                                <div class="h4 mb-0 fw-bold text-primary">{{ student.roll_number }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Section (Simple Collapse) -->
+    <div class="collapse {{ 'show' if start_date or end_date or attendance_type != 'all' or status_filter != 'all' }}" id="filterCollapse">
+        <div class="card border-0 shadow-sm mb-4" style="background-color: #f8fafc;">
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('student_dashboard') }}" class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">From Date</label>
+                        <input type="date" name="start_date" class="form-control" value="{{ start_date or '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">To Date</label>
+                        <input type="date" name="end_date" class="form-control" value="{{ end_date or '' }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">Attendance Basis</label>
+                        <select name="attendance_type" id="attendanceType" class="form-select">
+                            <option value="all" {% if attendance_type == 'all' %}selected{% endif %}>All Records</option>
+                            <option value="day" {% if attendance_type == 'day' %}selected{% endif %}>Overall Day</option>
+                            <option value="period" {% if attendance_type == 'period' %}selected{% endif %}>Specific Period</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 {% if attendance_type != 'period' %}d-none{% endif %}" id="periodFilterGroup">
+                        <label class="form-label small fw-bold">Period</label>
+                        <select name="period" class="form-select">
+                            <option value="">All Periods</option>
+                            {% for p in range(1, 9) %}
+                            <option value="{{ p }}" {% if period|string == p|string %}selected{% endif %}>Period {{ p }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">Status</label>
+                        <select name="status" class="form-select">
+                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+                            <option value="present" {% if status_filter == 'present' %}selected{% endif %}>Present</option>
+                            <option value="absent" {% if status_filter == 'absent' %}selected{% endif %}>Absent</option>
+                        </select>
+                    </div>
+                    <div class="col-md-12 mt-3">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <button type="submit" class="btn btn-primary px-4">Apply Filters</button>
+                            <a href="{{ url_for('student_dashboard') }}" class="btn btn-outline-secondary px-4">Reset</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- SHAREABLE REPORT AREA -->
+    <div id="shareableReport" class="p-3 bg-white rounded shadow-sm mb-4">
+        <div class="row">
+            <!-- Attendance Breakdown Chart -->
+            <div class="col-lg-4 mb-4">
+                <div class="card border-0 h-100" style="background-color: #f0fff4;">
+                    <div class="card-header bg-transparent border-0 py-3 text-center">
+                        <h6 class="m-0 fw-bold text-success">Attendance Status</h6>
+                    </div>
+                    <div class="card-body text-center d-flex flex-column justify-content-center">
+                        <div class="attendance-circle mb-4">
+                            <div class="position-relative d-inline-block">
+                                <svg width="150" height="150" viewBox="0 0 120 120">
+                                    <circle cx="60" cy="60" r="54" fill="none" stroke="#ffffff" stroke-width="8"></circle>
+                                    <circle cx="60" cy="60" r="54" fill="none" stroke="{{ '#2dce89' if stats.percentage >= 75 else '#f5365c' }}" 
+                                            stroke-width="8" stroke-dasharray="{{ stats.percentage * 3.39 }} 339" 
+                                            transform="rotate(-90 60 60)" stroke-linecap="round"></circle>
+                                </svg>
+                                <div class="position-absolute top-50 start-50 translate-middle">
+                                    <h2 class="mb-0 fw-bold text-dark">{{ "%.0f"|format(stats.percentage) }}%</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small fw-bold text-uppercase">Present</span>
+                                <span class="badge bg-success-soft text-success">{{ stats.present_days }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small fw-bold text-uppercase">Absent</span>
+                                <span class="badge bg-danger-soft text-danger">{{ stats.absent_days }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attendance Log Table -->
+            <div class="col-lg-8 mb-4">
+                <div class="card border-0 h-100" style="background-color: #f5f3ff;">
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="m-0 fw-bold text-primary">Attendance Log</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="bg-white bg-opacity-50">
+                                    <tr>
+                                        <th class="border-0 px-4 py-3 small fw-bold text-muted">DATE</th>
+                                        <th class="border-0 px-4 py-3 small fw-bold text-muted">BASIS</th>
+                                        <th class="border-0 px-4 py-3 small fw-bold text-muted text-center">STATUS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if history %}
+                                        {% for record in history %}
+                                        <tr class="border-bottom border-white border-opacity-50">
+                                            <td class="px-4 py-3 fw-bold">{{ record.date }}</td>
+                                            <td class="px-4 py-3">
+                                                <small class="text-muted">{{ "Period " ~ record.period if record.attendance_type == 'period' else "Full Day" }}</small>
+                                            </td>
+                                            <td class="px-4 py-3 text-center">
+                                                {% if record.status == 'present' %}
+                                                    <span class="badge bg-success-soft text-success rounded-pill px-3">Present</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger-soft text-danger rounded-pill px-3">Absent</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr><td colspan="3" class="text-center py-5">No records found.</td></tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DOWNLOAD BUTTONS -->
+    <div class="row mb-5">
+        <div class="col-12 text-center">
+            <div class="d-flex justify-content-center gap-3">
+                <button id="downloadImageBtn" class="btn btn-primary px-5 py-2 rounded-pill shadow">
+                    <i class="fas fa-image me-2"></i>Export as Image
+                </button>
+                <a href="{{ url_for('download_student_report_excel', **request.args) }}" class="btn btn-success px-5 py-2 rounded-pill shadow">
+                    <i class="fas fa-file-excel me-2"></i>Download Excel
+                </a>
+            </div>
+            <p class="text-muted small mt-3">Sharing this report will include your Status Pie Chart and Attendance Log Table.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-success-soft { background-color: rgba(45, 206, 137, 0.1) !important; color: #2dce89 !important; }
+    .bg-danger-soft { background-color: rgba(245, 54, 92, 0.1) !important; color: #f5365c !important; }
+</style>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle period filter based on attendance type
+    const attendanceTypeSelect = document.getElementById('attendanceType');
+    const periodFilterGroup = document.getElementById('periodFilterGroup');
+    
+    if (attendanceTypeSelect && periodFilterGroup) {
+        attendanceTypeSelect.addEventListener('change', function() {
+            if (this.value === 'period') {
+                periodFilterGroup.classList.remove('d-none');
+            } else {
+                periodFilterGroup.classList.add('d-none');
+            }
+        });
+    }
+
+    // IMAGE DOWNLOAD LOGIC
+    const downloadImageBtn = document.getElementById('downloadImageBtn');
+    if (downloadImageBtn) {
+        downloadImageBtn.addEventListener('click', function() {
+            const element = document.getElementById('shareableReport');
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+            this.disabled = true;
+
+            html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                windowWidth: 1200
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Attendance_Report_{{ student.name|replace(' ', '_') }}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                this.innerHTML = originalText;
+                this.disabled = false;
+            }).catch(err => {
+                alert('Export failed. Please try again.');
+                this.innerHTML = originalText;
+                this.disabled = false;
+            });
+        });
+    }
+
+    // Announcement Notification Logic
+    const announcementItems = document.querySelectorAll('.announcement-item');
+    const badge = document.getElementById('announcementBadge');
+    const dropdown = document.getElementById('announcementDropdown');
+    
+    if (announcementItems.length > 0) {
+        const lastSeenId = parseInt(localStorage.getItem('last_seen_announcement_id') || '0');
+        let latestId = 0;
+        let unreadCount = 0;
+        
+        announcementItems.forEach(item => {
+            const id = parseInt(item.getAttribute('data-id'));
+            if (id > latestId) latestId = id;
+            if (id > lastSeenId) unreadCount++;
+        });
+        
+        if (unreadCount > 0) {
+            badge.innerText = unreadCount > 9 ? '9+' : unreadCount;
+            badge.classList.remove('d-none');
+        }
+        
+        dropdown.addEventListener('show.bs.dropdown', function() {
+            localStorage.setItem('last_seen_announcement_id', latestId);
+            badge.classList.add('d-none');
+        });
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Attendance Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        table { border-collapse: collapse; width: 90%; margin: 20px auto; border: 1px solid #000; }
+        th, td { border: 1px solid #000; padding: 10px; }
+        th { background-color: #e0e0e0; }
+        h1 { font-size: 24px; margin-bottom: 5px; }
+        h2 { font-size: 20px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <h1>DEPARTMENT OF ARTIFICIAL INTELLIGENCE & DATA SCIENCE</h1>
+    <h2>DAILY ATTENDANCE REPORT - {{ date_str }} ({{ day_of_week }})</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>S.No.</th>
+                <th>CLASS</th>
+                <th>STRENGTH</th>
+                <th>PRESENT</th>
+                <th>ABSENT</th>
+                <th>ATTENDANCE %</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for class_data in report_data.classes %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ class_data.class_name }}</td>
+                <td>{{ class_data.total_students }}</td>
+                <td>{{ class_data.present }}</td>
+                <td>{{ class_data.absent }}</td>
+                <td>{{ "%.2f"|format(class_data.percentage) }}%</td>
+            </tr>
+            {% endfor %}
+            <tr>
+                <td colspan="2"><b>TOTAL</b></td>
+                <td><b>{{ report_data.total_students }}</b></td>
+                <td><b>{{ report_data.total_present }}</b></td>
+                <td><b>{{ report_data.total_students - report_data.total_present }}</b></td>
+                <td><b>{{ "%.2f"|format(report_data.overall_percentage) }}%</b></td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>

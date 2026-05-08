@@ -1,0 +1,632 @@
+{% extends "base.html" %}
+
+{% block title %}Login | Mahendra College of Engineering{% endblock %}
+
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+:root {
+    --primary: #1e3a8a;
+    --primary-light: #3b82f6;
+    --secondary: #eab308;
+    --accent: #f59e0b;
+    --bg-dark: #0f172a;
+    --bg-card: rgba(255, 255, 255, 0.05);
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    overflow-x: hidden;
+    min-height: 100vh;
+}
+
+/* Sophisticated Animated Background */
+.bg-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background: radial-gradient(circle at 0% 0%, rgba(30, 58, 138, 0.4) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(234, 179, 8, 0.15) 0%, transparent 50%),
+                #0f172a;
+}
+
+.bg-blob {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background: linear-gradient(135deg, rgba(30, 58, 138, 0.2), rgba(59, 130, 246, 0.2));
+    filter: blur(80px);
+    border-radius: 50%;
+    animation: move 25s infinite alternate;
+}
+
+@keyframes move {
+    from { transform: translate(-10%, -10%) rotate(0deg); }
+    to { transform: translate(20%, 20%) rotate(360deg); }
+}
+
+.main-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+/* Header Section */
+.header {
+    text-align: center;
+    margin-bottom: 4rem;
+    animation: fadeInDown 0.8s ease-out;
+}
+
+.college-name {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+.department-name {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: var(--secondary);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.system-title {
+    font-size: 1rem;
+    color: var(--text-muted);
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.system-title::before, .system-title::after {
+    content: '';
+    width: 40px;
+    height: 1px;
+    background: var(--text-muted);
+    opacity: 0.3;
+}
+
+/* Login Grid */
+.login-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    width: 100%;
+    margin-bottom: 2rem;
+}
+
+.role-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.role-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+    opacity: 0;
+    transition: var(--transition);
+}
+
+.role-card:hover {
+    transform: translateY(-10px);
+    border-color: var(--secondary);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3), 0 0 20px rgba(234, 179, 8, 0.1);
+}
+
+.role-card:hover::before {
+    opacity: 1;
+}
+
+.role-icon {
+    width: 80px;
+    height: 80px;
+    background: rgba(30, 58, 138, 0.3);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: var(--secondary);
+    margin-bottom: 2rem;
+    transition: var(--transition);
+}
+
+.role-card:hover .role-icon {
+    transform: scale(1.1) rotate(5deg);
+    background: var(--secondary);
+    color: var(--bg-dark);
+}
+
+.role-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.role-desc {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.btn-select {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--secondary);
+    background: transparent;
+    color: var(--secondary);
+    font-weight: 600;
+    font-size: 1rem;
+    transition: var(--transition);
+}
+
+.role-card:hover .btn-select {
+    background: var(--secondary);
+    color: var(--bg-dark);
+}
+
+/* Login Form Modal/Overlay */
+.login-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(10px);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.login-modal {
+    background: #1e293b;
+    width: 100%;
+    max-width: 450px;
+    border-radius: 28px;
+    padding: 3rem;
+    position: relative;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transform: scale(0.9);
+    opacity: 0;
+    transition: var(--transition);
+}
+
+.login-overlay.active {
+    display: flex;
+}
+
+.login-overlay.active .login-modal {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.close-btn {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: rgba(255,255,255,0.05);
+    border: none;
+    color: var(--text-main);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+
+.close-btn:hover {
+    background: rgba(255,255,255,0.1);
+    transform: rotate(90deg);
+}
+
+.modal-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.modal-icon {
+    font-size: 3rem;
+    color: var(--secondary);
+    margin-bottom: 1rem;
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    padding-left: 0.25rem;
+}
+
+.input-wrapper {
+    position: relative;
+}
+
+.input-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+}
+
+.toggle-password {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+    z-index: 10;
+}
+
+.toggle-password:hover {
+    color: var(--secondary);
+}
+
+.form-control {
+    width: 100%;
+    padding: 1rem 3rem;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #ffffff !important;
+    font-size: 1rem;
+    transition: var(--transition);
+}
+
+.form-control::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--secondary);
+    background: rgba(15, 23, 42, 0.8);
+    box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.1);
+    color: #ffffff !important;
+}
+
+.login-submit {
+    width: 100%;
+    padding: 1.1rem;
+    background: linear-gradient(135deg, var(--secondary), var(--accent));
+    border: none;
+    border-radius: 12px;
+    color: var(--bg-dark);
+    font-weight: 700;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: var(--transition);
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.login-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(234, 179, 8, 0.3);
+}
+
+/* Alerts */
+.flash-messages {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    z-index: 2000;
+}
+
+.alert {
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    animation: slideIn 0.5s ease-out;
+    background: rgba(30, 41, 59, 0.95);
+    backdrop-filter: blur(8px);
+    border-left: 4px solid var(--secondary);
+    color: #fff;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+
+.alert-error, .alert-danger {
+    border-left: 4px solid #ef4444;
+}
+
+.alert span {
+    font-weight: 500;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeInDown {
+    from { transform: translateY(-30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* Footer */
+.footer {
+    margin-top: auto;
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+@media (max-width: 640px) {
+    .login-grid {
+        grid-template-columns: 1fr;
+    }
+    .main-container {
+        padding: 1rem;
+    }
+    .header {
+        margin-bottom: 2rem;
+    }
+    .login-modal {
+        padding: 2rem 1.5rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-wrapper">
+    <div class="bg-blob"></div>
+</div>
+
+<div class="flash-messages">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }}">
+                    <i class="fas fa-{{ 'circle-exclamation' if category == 'error' else 'circle-check' if category == 'success' else 'info-circle' }}"></i>
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+</div>
+
+<main class="main-container">
+    <header class="header">
+        <h1 class="college-name">Mahendra College of Engineering</h1>
+        <p class="department-name">Department of AI & Data Science</p>
+        <div class="system-title">
+            <i class="fas fa-shield-halved"></i>
+            Trackzy v2.0 • Advanced Attendance Management
+        </div>
+    </header>
+
+    <div class="login-grid">
+        <!-- Admin Box -->
+        <div class="role-card" onclick="openLogin('hod', 'Admin / HOD Login', 'fa-user-shield')">
+            <div class="role-icon">
+                <i class="fas fa-user-shield"></i>
+            </div>
+            <h2 class="role-title">Admin Login</h2>
+            <p class="role-desc">Administrative access for Department Heads and System Administrators to manage staff and students.</p>
+            <button class="btn-select">Access Portal</button>
+        </div>
+
+        <!-- Staff Box -->
+        <div class="role-card" onclick="openLogin('staff', 'Faculty Login', 'fa-chalkboard-teacher')">
+            <div class="role-icon">
+                <i class="fas fa-chalkboard-teacher"></i>
+            </div>
+            <h2 class="role-title">Staff Login</h2>
+            <p class="role-desc">Faculty access for marking daily attendance, managing class reports, and communicating with students.</p>
+            <button class="btn-select">Access Portal</button>
+        </div>
+
+        <!-- Student Box -->
+        <div class="role-card" onclick="openLogin('student', 'Student Login', 'fa-user-graduate')">
+            <div class="role-icon">
+                <i class="fas fa-user-graduate"></i>
+            </div>
+            <h2 class="role-title">Student Login</h2>
+            <p class="role-desc">Student portal for checking attendance history, tracking performance, and AI-powered insights.</p>
+            <button class="btn-select">Access Portal</button>
+        </div>
+    </div>
+
+    <footer class="footer">
+        © 2026 Mahendra College of Engineering. All rights reserved.<br>
+        Developed by Team Hugs For Bugs
+    </footer>
+</main>
+
+<!-- Login Overlay -->
+<div class="login-overlay" id="loginOverlay">
+    <div class="login-modal">
+        <button class="close-btn" onclick="closeLogin()">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="modal-header">
+            <div class="modal-icon" id="modalIcon">
+                <i class="fas fa-user"></i>
+            </div>
+            <h3 class="modal-title" id="modalTitle">Login</h3>
+            <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.5rem;">Please enter your credentials to continue</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('login') }}">
+            <input type="hidden" name="role" id="roleInput">
+            
+        <div class="form-group">
+            <label class="form-label" id="usernameLabel">Username / ID</label>
+            <div class="input-wrapper">
+                <i class="fas fa-user input-icon"></i>
+                <input type="text" name="username" id="usernameInput" class="form-control" placeholder="Enter your username" required>
+            </div>
+        </div>
+
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input type="password" name="password" id="passwordInput" class="form-control" placeholder="••••••••" required>
+                    <i class="fas fa-eye toggle-password" id="togglePassword"></i>
+                </div>
+            </div>
+
+            <button type="submit" class="login-submit">
+                <span>Sign In to System</span>
+                <i class="fas fa-arrow-right-long"></i>
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const overlay = document.getElementById('loginOverlay');
+const roleInput = document.getElementById('roleInput');
+const modalTitle = document.getElementById('modalTitle');
+const modalIcon = document.getElementById('modalIcon');
+const usernameLabel = document.getElementById('usernameLabel');
+const usernameInput = document.getElementById('usernameInput');
+
+function openLogin(role, title, iconClass) {
+    roleInput.value = role;
+    modalTitle.textContent = title;
+    modalIcon.innerHTML = `<i class="fas ${iconClass}"></i>`;
+    
+    // Clear previous inputs
+    usernameInput.value = '';
+    passwordInput.value = '';
+    
+    // Reset password visibility to hidden
+    passwordInput.setAttribute('type', 'password');
+    if (togglePassword) {
+        togglePassword.classList.remove('fa-eye-slash');
+        togglePassword.classList.add('fa-eye');
+    }
+    if (role === 'student') {
+        usernameLabel.textContent = 'Student Name';
+        usernameInput.placeholder = 'Enter your full name';
+    } else {
+        usernameLabel.textContent = 'Username / ID';
+        usernameInput.placeholder = 'Enter your username';
+    }
+    
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeLogin() {
+    overlay.classList.remove('active');
+    document.body.style.overflow = 'auto';
+}
+
+// Close on escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeLogin();
+});
+
+// Close on click outside
+overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeLogin();
+});
+
+// Auto-hide alerts after 5 seconds
+setTimeout(() => {
+    document.querySelectorAll('.alert').forEach(alert => {
+        alert.style.transform = 'translateX(120%)';
+        alert.style.opacity = '0';
+        setTimeout(() => alert.remove(), 500);
+    });
+}, 5000);
+
+// Password visibility toggle
+const togglePassword = document.getElementById('togglePassword');
+const passwordInput = document.getElementById('passwordInput');
+
+if (togglePassword && passwordInput) {
+    togglePassword.addEventListener('click', function() {
+        // Toggle the type attribute
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+
+        // Toggle the eye icon
+        this.classList.toggle('fa-eye');
+        this.classList.toggle('fa-eye-slash');
+    });
+}
+</script>
+
+{% endblock %}

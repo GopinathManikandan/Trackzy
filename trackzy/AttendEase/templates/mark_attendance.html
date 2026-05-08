@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block title %}Mark Attendance - {{ class_obj.class_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item">
+                                <a href="{{ url_for('staff_dashboard') }}">Dashboard</a>
+                            </li>
+                            <li class="breadcrumb-item active">Mark Attendance</li>
+                        </ol>
+                    </nav>
+                    <h2 class="mb-1">
+                        <i class="fas fa-clipboard-check text-primary me-2"></i>
+                        {{ class_obj.class_name }}
+                    </h2>
+                    <p class="text-muted mb-0">
+                        <i class="fas fa-calendar me-1"></i>{{ date_str }} | 
+                        <i class="fas fa-clock me-1"></i>{{ attendance_type.title() }}
+                        {% if period %} - Period {{ period }}{% endif %}
+                    </p>
+                </div>
+                <div class="text-end">
+                    {% if locked %}
+                    <span class="badge bg-success fs-6">
+                        <i class="fas fa-lock me-1"></i>Attendance Locked
+                    </span>
+                    {% else %}
+                    <span class="badge bg-warning fs-6">
+                        <i class="fas fa-edit me-1"></i>Ready to Mark
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if locked %}
+    <!-- Locked State -->
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-info-circle fa-2x me-3"></i>
+                    <div>
+                        <h5 class="alert-heading mb-1">Attendance Already Submitted</h5>
+                        <p class="mb-2">The attendance for this class has already been marked and locked.</p>
+                        <a href="{{ url_for('latecomer_attendance', class_id=class_obj.class_id, date=date_str, type=attendance_type, period=period) }}" 
+                           class="btn btn-warning btn-sm">
+                            <i class="fas fa-user-clock me-1"></i>Mark Latecomers
+                        </a>
+                        <a href="{{ url_for('staff_dashboard') }}" class="btn btn-secondary btn-sm ms-2">
+                            <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Attendance Form -->
+    <form method="POST" action="{{ url_for('mark_attendance', class_id=class_obj.class_id) }}" id="attendanceForm">
+        <input type="hidden" name="class_id" value="{{ class_obj.class_id }}">
+        <input type="hidden" name="date" value="{{ date_str }}">
+        <input type="hidden" name="attendance_type" value="{{ attendance_type }}">
+        {% if period %}<input type="hidden" name="period" value="{{ period }}">{% endif %}
+        
+        <!-- Quick Actions -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="quick-actions-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">
+                            <i class="fas fa-zap text-warning me-2"></i>Quick Actions
+                        </h5>
+                        <div id="attendanceSummary" class="text-muted">
+                            <span id="summaryText">Ready to mark attendance</span>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-2">
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-success" id="markAllPresent">
+                                <i class="fas fa-check-double me-1"></i>All Present
+                            </button>
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-danger" id="markAllAbsent">
+                                <i class="fas fa-times-circle me-1"></i>All Absent
+                            </button>
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-secondary" id="resetAll">
+                                <i class="fas fa-undo me-1"></i>Reset
+                            </button>
+                        </div>
+                        <div class="col-auto ms-auto">
+                            <div class="attendance-counter">
+                                <span class="badge bg-primary me-2">
+                                    Total: <span id="totalCount">{{ students|length }}</span>
+                                </span>
+                                <span class="badge bg-success me-2">
+                                    Present: <span id="presentCount">0</span>
+                                </span>
+                                <span class="badge bg-danger">
+                                    Absent: <span id="absentCount">{{ students|length }}</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Students List -->
+        <div class="row">
+            <div class="col-12">
+                <div class="attendance-card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-users text-primary me-2"></i>
+                                Students ({{ students|length }})
+                            </h5>
+                            <div class="progress" style="width: 200px; height: 6px;">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                     id="progressBar" style="width: 0%">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body p-0">
+                        <div class="students-grid">
+                            {% for student in students %}
+                            <div class="student-item" data-student-id="{{ student.student_id }}">
+                                <div class="form-check">
+                                    <input class="form-check-input attendance-checkbox" 
+                                           type="checkbox" 
+                                           name="student_{{ student.student_id }}" 
+                                           value="present"
+                                           id="student_{{ student.student_id }}"
+                                           {% if attendance_status.get(student.student_id) == 'present' %}checked{% endif %}>
+                                    <label class="form-check-label student-label" 
+                                           for="student_{{ student.student_id }}">
+                                        <div class="student-info">
+                                            <div class="student-avatar">
+                                                {{ student.name[:1]|upper if student.name else '' }}
+                                            </div>
+                                            <div class="student-details">
+                                                <div class="student-name">{{ student.name }}</div>
+                                                <div class="student-roll">{{ student.roll_number }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="status-indicator">
+                                            <i class="fas fa-check"></i>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Submit Section -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="submit-section">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="final-summary">
+                            <h5 class="mb-1">Final Summary</h5>
+                            <p class="text-muted mb-0" id="finalSummaryText">
+                                Mark attendance for all students and submit
+                            </p>
+                        </div>
+                        <div class="submit-actions">
+                            <a href="{{ url_for('staff_dashboard') }}" class="btn btn-secondary me-2">
+                                <i class="fas fa-arrow-left me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                <i class="fas fa-save me-1"></i>Submit Attendance
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class AttendanceMarker {
+    constructor() {
+        this.totalStudents = {{ students|length }};
+        this.init();
+    }
+    
+    init() {
+        this.bindEvents();
+        this.updateCounts();
+    }
+    
+    bindEvents() {
+        // Quick action buttons
+        document.getElementById('markAllPresent')?.addEventListener('click', () => this.markAll(true));
+        document.getElementById('markAllAbsent')?.addEventListener('click', () => this.markAll(false));
+        document.getElementById('resetAll')?.addEventListener('click', () => this.reset());
+        
+        // Individual checkboxes
+        document.querySelectorAll('.attendance-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', () => this.updateCounts());
+        });
+        
+        // Form submission
+        document.getElementById('attendanceForm')?.addEventListener('submit', (e) => this.handleSubmit(e));
+    }
+    
+    markAll(present) {
+        const checkboxes = document.querySelectorAll('.attendance-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = present;
+            this.updateStudentItemState(checkbox.closest('.student-item'), present);
+        });
+        this.updateCounts();
+        this.showFeedback(present ? 'All students marked as present' : 'All students marked as absent');
+    }
+    
+    reset() {
+        const checkboxes = document.querySelectorAll('.attendance-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+            this.updateStudentItemState(checkbox.closest('.student-item'), false);
+        });
+        this.updateCounts();
+        this.showFeedback('Attendance reset');
+    }
+    
+    updateStudentItemState(studentItem, isPresent) {
+        if (isPresent) {
+            studentItem.classList.add('present');
+            studentItem.classList.remove('absent');
+        } else {
+            studentItem.classList.add('absent');
+            studentItem.classList.remove('present');
+        }
+    }
+    
+    updateCounts() {
+        const checkedBoxes = document.querySelectorAll('.attendance-checkbox:checked');
+        const presentCount = checkedBoxes.length;
+        const absentCount = this.totalStudents - presentCount;
+        const percentage = this.totalStudents > 0 ? Math.round((presentCount / this.totalStudents) * 100) : 0;
+        
+        // Update counters
+        document.getElementById('presentCount').textContent = presentCount;
+        document.getElementById('absentCount').textContent = absentCount;
+        
+        // Update progress bar
+        const progressBar = document.getElementById('progressBar');
+        progressBar.style.width = percentage + '%';
+        progressBar.setAttribute('aria-valuenow', percentage);
+        
+        // Update summary text
+        const summaryText = `${presentCount} Present, ${absentCount} Absent (${percentage}%)`;
+        document.getElementById('summaryText').textContent = summaryText;
+        document.getElementById('finalSummaryText').textContent = summaryText;
+        
+        // Update individual student items
+        document.querySelectorAll('.student-item').forEach(item => {
+            const checkbox = item.querySelector('.attendance-checkbox');
+            this.updateStudentItemState(item, checkbox.checked);
+        });
+    }
+    
+    handleSubmit(e) {
+        const presentCount = document.querySelectorAll('.attendance-checkbox:checked').length;
+        
+        if (!confirm(`Are you sure you want to submit attendance?\n\nPresent: ${presentCount}\nAbsent: ${this.totalStudents - presentCount}\n\nThis action cannot be undone.`)) {
+            e.preventDefault();
+            return;
+        }
+        
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Submitting...';
+        submitBtn.disabled = true;
+    }
+    
+    showFeedback(message) {
+        // Create a temporary toast-like notification
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 100);
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => document.body.removeChild(toast), 300);
+        }, 2000);
+    }
+}
+
+// Initialize attendance marker
+document.addEventListener('DOMContentLoaded', function() {
+    new AttendanceMarker();
+});
+</script>
+{% endblock %}
